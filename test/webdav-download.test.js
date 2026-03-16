@@ -83,4 +83,30 @@ describe('WebDAV download auth fallback', function () {
     const response = await getWebDAVFile('uploads/missing.png', env);
     assert.strictEqual(response, null);
   });
+
+  it('connection check falls back from bearer to basic auth', async function () {
+    const authHeaders = [];
+
+    global.fetch = async (_url, init = {}) => {
+      const auth = init?.headers?.Authorization || '';
+      authHeaders.push(auth);
+      if (String(auth).startsWith('Bearer ')) {
+        return new Response('unauthorized', { status: 401 });
+      }
+      return new Response('<?xml version="1.0"?><multistatus/>', { status: 207 });
+    };
+
+    const { checkWebDAVConnection } = await import('../functions/utils/webdav.js');
+    const env = {
+      WEBDAV_BASE_URL: 'https://example.com/dav',
+      WEBDAV_BEARER_TOKEN: 'bad-token',
+      WEBDAV_USERNAME: 'user',
+      WEBDAV_PASSWORD: 'pass',
+    };
+
+    const result = await checkWebDAVConnection(env);
+    assert.strictEqual(result.connected, true);
+    assert.ok(String(authHeaders[0]).startsWith('Bearer '));
+    assert.ok(authHeaders.some((value) => String(value).startsWith('Basic ')));
+  });
 });

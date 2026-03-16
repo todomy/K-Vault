@@ -1088,19 +1088,24 @@ function createApp() {
     const id = decodeURIComponent(c.req.param('id'));
     const range = c.req.header('range');
 
-    const result = await uploadService.getFileResponse(id, range);
-    if (!result) {
-      return c.text('File not found', 404);
+    try {
+      const result = await uploadService.getFileResponse(id, range);
+      if (!result) {
+        return c.text('File not found', 404);
+      }
+
+      const upstream = result.response;
+      const headers = buildFileProxyHeaders(result, upstream.headers);
+
+      return new Response(upstream.body, {
+        status: upstream.status,
+        statusText: upstream.statusText,
+        headers,
+      });
+    } catch (error) {
+      console.error('file proxy route error:', error);
+      return c.text(`File proxy error: ${error?.message || 'Unknown error'}`, 502);
     }
-
-    const upstream = result.response;
-    const headers = buildFileProxyHeaders(result, upstream.headers);
-
-    return new Response(upstream.body, {
-      status: upstream.status,
-      statusText: upstream.statusText,
-      headers,
-    });
   });
 
   app.options('/file/:id', (c) => c.body(null, 204));
@@ -1109,19 +1114,26 @@ function createApp() {
     const id = decodeURIComponent(c.req.param('id'));
     const range = c.req.header('range');
 
-    const result = await uploadService.getFileResponse(id, range);
-    if (!result) {
-      return c.body(null, 404);
+    try {
+      const result = await uploadService.getFileResponse(id, range);
+      if (!result) {
+        return c.body(null, 404);
+      }
+
+      const upstream = result.response;
+      const headers = buildFileProxyHeaders(result, upstream.headers);
+
+      return new Response(null, {
+        status: upstream.status,
+        statusText: upstream.statusText,
+        headers,
+      });
+    } catch (error) {
+      console.error('file proxy HEAD route error:', error);
+      return c.body(null, 502, {
+        'X-File-Proxy-Error': String(error?.message || 'Unknown error').slice(0, 200),
+      });
     }
-
-    const upstream = result.response;
-    const headers = buildFileProxyHeaders(result, upstream.headers);
-
-    return new Response(null, {
-      status: upstream.status,
-      statusText: upstream.statusText,
-      headers,
-    });
   });
 
   app.get('/share/:id', async (c) => {
@@ -1143,20 +1155,25 @@ function createApp() {
       return c.text('Invalid share signature.', 403);
     }
 
-    const result = await uploadService.getFileResponse(fileId, range);
-    if (!result) {
-      return c.text('File not found', 404);
+    try {
+      const result = await uploadService.getFileResponse(fileId, range);
+      if (!result) {
+        return c.text('File not found', 404);
+      }
+
+      const upstream = result.response;
+      const headers = buildFileProxyHeaders(result, upstream.headers);
+      headers.set('Cache-Control', 'private, max-age=60');
+
+      return new Response(upstream.body, {
+        status: upstream.status,
+        statusText: upstream.statusText,
+        headers,
+      });
+    } catch (error) {
+      console.error('share proxy route error:', error);
+      return c.text(`Share proxy error: ${error?.message || 'Unknown error'}`, 502);
     }
-
-    const upstream = result.response;
-    const headers = buildFileProxyHeaders(result, upstream.headers);
-    headers.set('Cache-Control', 'private, max-age=60');
-
-    return new Response(upstream.body, {
-      status: upstream.status,
-      statusText: upstream.statusText,
-      headers,
-    });
   });
 
   app.options('/share/:id', (c) => c.body(null, 204));

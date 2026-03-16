@@ -158,6 +158,28 @@ docker compose --profile redis up -d --build
 
 For full Docker guide, see [README-DOCKER.md](README-DOCKER.md).
 
+### WebDAV Regression Validation (Works for Pages and Docker)
+
+After deployment, run at least one WebDAV smoke check to verify the full flow: config test -> upload -> download -> delete.
+
+Example:
+
+```bash
+BASE_URL=https://your-domain \
+BASIC_USER=admin BASIC_PASS=your_password \
+SMOKE_STORAGE_TYPE=webdav \
+SMOKE_STORAGE_CONFIG_JSON='{"baseUrl":"https://dav.example.com","username":"u","password":"p","rootPath":"uploads"}' \
+node scripts/storage-regression.js
+```
+
+Validation criteria:
+
+- `webdav.connected` in `/api/status` must be `true`
+- `/api/storage/:id/test` must return `connected=true`
+- WebDAV `upload / download / delete` in the regression script must all pass
+
+For Docker deployment, simply change `BASE_URL` to your self-hosted address, for example `http://localhost:8080`.
+
 ---
 
 ## Storage Configuration

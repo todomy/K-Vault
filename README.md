@@ -136,6 +136,28 @@ docker compose --profile redis up -d --build
 
 完整 Docker 说明请查看 [README-DOCKER.md](README-DOCKER.md)。
 
+### WebDAV 回归验证（Cloudflare Pages / Docker 通用）
+
+部署完成后，建议至少执行一次 WebDAV 烟测，确认“配置测试 -> 上传 -> 下载 -> 删除”完整闭环。
+
+示例：
+
+```bash
+BASE_URL=https://你的域名 \
+BASIC_USER=admin BASIC_PASS=your_password \
+SMOKE_STORAGE_TYPE=webdav \
+SMOKE_STORAGE_CONFIG_JSON='{"baseUrl":"https://dav.example.com","username":"u","password":"p","rootPath":"uploads"}' \
+node scripts/storage-regression.js
+```
+
+校验标准：
+
+- `/api/status` 中 `webdav.connected` 必须为 `true`
+- `/api/storage/:id/test` 必须返回 `connected=true`
+- 回归脚本中的 WebDAV `upload / download / delete` 三步必须全部通过
+
+如果是 Docker 部署，只需把 `BASE_URL` 换成你的自托管地址，例如 `http://localhost:8080`。
+
 ### Docker 登录 API（curl 示例）
 
 `/api/auth/login` 同时兼容两种请求体：
